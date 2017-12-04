@@ -1,16 +1,18 @@
 import std.stdio;
 import std.file;
+import utils_hash;
+import std.digest.sha;
 import merklenode;
 
 class MerkleTree {
-	// number of blocks = length of leafs
+	// number of blocks = length of leaves
 	uint nblocks;
-	LeafNode[] leafs;
+	Node[] leaves;
+	ulong filesize;
 
 	private InternalNode _root;
 	private string _dirname;
-	private char[64] _merkleroot;
-
+	private string _merkleroot;
 
 	this (string dirname) {
 		_dirname = dirname;
@@ -26,8 +28,10 @@ class MerkleTree {
 		auto mroot = root.verify();
 		if (mroot == merkleroot) {
 			return true;
+		} else {
+			merkleroot = mroot;
+			return false;
 		}
-		return false;
 	}
 
 // properties
@@ -39,29 +43,43 @@ class MerkleTree {
 		return _root = r;
 	}
 
-	@property char[64] merkleroot() {
+	@property string merkleroot() {
 		return _merkleroot;
 	}
 
-	@property char[64] merkleroot(char[64] mr) {
+	@property string merkleroot(char[64] mr) {
+		return _merkleroot = cast(string) mr;
+	}
+
+	@property string merkleroot(string mr) {
 		return _merkleroot = mr;
+
 	}
 
 // helper functions
 	private void _build_tree () {
-		_build_leafs();
-		_connect_tree();
+		_build_leaves();
+		_connect_tree(leaves);
 	}
 
-	private void _build_leafs () {
+	private uint _round_nblocks (ulong size) {
+		size = size/1024; // we need KB
+		uint res = cast(uint) size;
+		writeln(res);
+		return res; 
+	}
+
+	private void _build_leaves () {
 		// open the file for reading
 		auto f = File (_dirname, "r");
+		filesize = f.size;
+		nblocks = _round_nblocks(filesize);
 
 		// read the file in chunks of 256 KB
 		// append the buffer read to the array of leaves
 		int id = 0;
-		foreach (ubyte[] buf, f.byChunk(256*1024) {
-			leafs ~= LeafNode(id++, buf);
+		foreach (ubyte[] buf; f.byChunk(256*1024)) {
+			leaves ~= new LeafNode(id++, buf);
 			nblocks++;
 		}
 
@@ -69,45 +87,69 @@ class MerkleTree {
 		// duplicate last node
 		// mark the duplicate as such
 		if (nblocks % 2 != 0) {
-			leafs ~= leafs[$-1];
+			leaves ~= leaves[$-1];
 			nblocks++;
-			leafs[$-1].duplicate = true;
+			leaves[$-1].duplicate = true;
 		}
+
+		writeln (leaves.length);
 
 	}
 
 	// build the actual tree connecting leaves and internals
-	private void _connect_tree (LeafNode[] nodes) {
+	private void _connect_tree (Node[] nodes) {
 		// if we only have 1 element in nodes
 		// we arrived at the root of the tree
 		if (nodes.length == 1) {
-			root = nodes[0];
+			root = cast(InternalNode) nodes[0];
 			merkleroot = root.hash;
 			return;
 		}
 
 		// store the higher nodes to recur
-		LeafNode[] higherNodes;
+		Node[] higherNodes;
 
 		// each couple of leaves is linked
 		// to an InternalNode parent
-		for (int i=0; i<nblocks; i+=2) {
+		for (int i=0; i<nodes.length; i+=2) {
 			// create a new parent for the two nodes
 			// set the nodes as left, right
-			auto parent = InternalNode(nodes[i], nodes[i+1]);
+			auto parent = new InternalNode(nodes[i], nodes[i+1]);
+
 			// compute the hash on the two nodes
 			// store it in the internal node
-			parent.computeHash!SHA256(nodes[i], nodes[i+1]);
-
+			parent.computeHash!SHA256(nodes[i].hash, nodes[i+1].hash);
 			nodes[i].parent = parent;
 			nodes[i+1].parent = parent;
 
+			// append the node to the list of new nodes
 			higherNodes ~= parent;
 		}
 
+		if (higherNodes.length % 2 != 0 && higherNodes.length != 1) { 
+			higherNodes ~= higherNodes[$-1];
+			higherNodes[$-1].duplicate = true;
+		}
+
+
+		writeln (higherNodes.length);
 		_connect_tree(higherNodes);
+	}
+
+	void print_tree (Node n) {
+		writeln ("Node: "~ cast(string) n.hash);
+		if (!n.isLeafNode) {
+			print_tree(n.left);
+			print_tree(n.right);
+		}
 	}
 }
 
-void main() {}
+void main() {
+	MerkleTree mkt = new MerkleTree ("/home/francesco/test");
+	while (true) {
+		writeln(mkt.verify_tree());
+	}
+	//mkt.print_tree(mkt.root);
+}
 

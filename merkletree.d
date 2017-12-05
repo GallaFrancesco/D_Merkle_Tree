@@ -15,11 +15,11 @@ class MerkleTree {
 	private string _merkleroot;
 
 	this (string dirname) {
-		_dirname = dirname;
-		nblocks = 0;
 		// create the leaves
 		// connect the tree
 		// save the merkleroot (root.hash)
+		_dirname = dirname;
+		nblocks = 0;
 		_build_tree();
 	}
 
@@ -33,27 +33,13 @@ class MerkleTree {
 			return false;
 		}
 	}
-
-// properties
-	@property InternalNode root() {
-		return _root;
-	}
-
-	@property InternalNode root(InternalNode r) {
-		return _root = r;
-	}
-
-	@property string merkleroot() {
-		return _merkleroot;
-	}
-
-	@property string merkleroot(char[64] mr) {
-		return _merkleroot = cast(string) mr;
-	}
-
-	@property string merkleroot(string mr) {
-		return _merkleroot = mr;
-
+	// for debugging purposes, print all the nodes' hashes
+	void print_tree (Node n) {
+		writeln ("Node: "~ cast(string) n.hash);
+		if (!n.leaf) {
+			print_tree(n.left);
+			print_tree(n.right);
+		}
 	}
 
 // helper functions
@@ -61,7 +47,7 @@ class MerkleTree {
 		_build_leaves();
 		_connect_tree(leaves);
 	}
-
+	// TODO
 	private uint _round_nblocks (ulong size) {
 		size = size/1024; // we need KB
 		uint res = cast(uint) size;
@@ -136,12 +122,26 @@ class MerkleTree {
 		_connect_tree(higherNodes);
 	}
 
-	void print_tree (Node n) {
-		writeln ("Node: "~ cast(string) n.hash);
-		if (!n.isLeafNode) {
-			print_tree(n.left);
-			print_tree(n.right);
-		}
+// properties
+	@property InternalNode root() {
+		return _root;
+	}
+
+	@property InternalNode root(InternalNode r) {
+		return _root = r;
+	}
+
+	@property string merkleroot() {
+		return _merkleroot;
+	}
+
+	@property string merkleroot(char[64] mr) {
+		return _merkleroot = cast(string) mr;
+	}
+
+	@property string merkleroot(string mr) {
+		return _merkleroot = mr;
+
 	}
 }
 

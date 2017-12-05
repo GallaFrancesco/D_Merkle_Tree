@@ -14,7 +14,7 @@ class Node {
 	private bool _root;
 	private bool _duplicate;
 
-	// structural functions
+// properties
 	@property inout(Node) left() inout {
 		return _left;
 	}
@@ -27,14 +27,7 @@ class Node {
 		return _parent;
 	}
 
-	// set a node as the parent
-	// useful for bottom-up building
-	// (leaf upwards)
-	@property Node parent(Node n) {
-		return _parent = n;
-	}
-
-	// overloads to create new left, right nodes
+// overloads to add new left, right, parent
 	@property Node left (Node n) {
 		return _left = n;
 	}
@@ -43,29 +36,48 @@ class Node {
 		return _right = n;
 	}
 
-	// flag duplicate nodes
+	@property Node parent(Node n) {
+		return _parent = n;
+	}
+
+// flag duplicate nodes
 	@property bool duplicate () {
 		return _duplicate;
 	}
 
+// set a node as duplicate
 	@property bool duplicate (bool v) {
 		return _duplicate = v;
 	}
 
-	// get the hash as a char array
-	// TODO the hash should be decided, not forced to 64 bit
+// get the hash as a char array
 	@property string hash () {
 		return cast(string)this._hash;
 	}
 
-	@property bool isLeafNode (){
+	@property char[64] hash (char[64] h) {
+		return this._hash = h;
+	}
+
+// LeafNode or InternalNode (faster way of discriminating)
+	@property bool leaf (){
 		return _leaf;
 	}
 
-	@property bool isRoot (){
-		return _root;	
+	@property bool leaf (bool v) {
+		return _leaf = v;
 	}
 
+	@property bool root (){
+		return _root;
+	}
+
+	@property bool root (bool v) {
+		return _root = v;
+	}
+
+// abstract == overriding forced
+// verify the node's subtree hash, return it
 	abstract string verify () {
 		return "";
 	}
@@ -75,22 +87,21 @@ class LeafNode : Node {
 	// the block id (unique)
 	uint blockId;
 	private ubyte[] data;	
-	
 
 	this (uint bId, ubyte[] d) {
-		_leaf = true;
+		leaf = true;
 		data = d;
 		duplicate = false;
 		blockId = bId;
 	}
 
-	char[64] computeHash(Hash)() {
-		_hash = produceHash!Hash(to!string(data), this.isLeafNode);
-		return _hash;
+	string computeHash(Hash)() {
+		hash = produceHash!Hash(to!string(data), leaf);
+		return hash;
 	}
 
 	override string verify () {
-		auto h = cast(string) computeHash!SHA256();
+		auto h = computeHash!SHA256();
 		//writeln("Leaf "~h);
 		return h;
  	}
@@ -101,30 +112,30 @@ class InternalNode : Node {
 	// the parent must be provided,
 	// default is null for root
 	this (Node l, Node r) {
-		_leaf = false;
-		_root = true;
+		leaf = false;
+		root = true;
 		duplicate = false;
 		if (parent !is null) {
-			_parent = parent;
-			_root = false;
+			parent = parent;
+			root = false;
 		} else {
-			_root = true;
+			root = true;
 		}
-		this.left = l;
-		this.right = r;
+		left = l;
+		right = r;
 	}
 
-	char[64] computeHash(Hash)(string lhash, string rhash) {
+	string computeHash(Hash)(string lhash, string rhash) {
 		// concatenate the two childrens' hashes into a string
-		string data = cast(string)lhash ~ cast(string)rhash;
+		string data = lhash ~ rhash;
 		// hash the string
-		_hash = produceHash!Hash(data, false);
-		return _hash;
+		hash = produceHash!Hash(data, false);
+		return hash;
 	}
 
 	override string verify () {
 		// the node is not a leaf, recur on the subnodes
-		auto h = cast(string) computeHash!SHA256(this.left.verify(), this.right.verify());
+		auto h = computeHash!SHA256(left.verify(), right.verify());
 		//writeln("Internal: "~h);
 		return h;
 	}

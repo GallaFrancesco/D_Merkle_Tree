@@ -1,12 +1,15 @@
 import std.stdio;
 import std.file;
+import std.math;
 import utils_hash;
 import std.digest.sha;
 import merklenode;
 
 class MerkleTree {
 	// number of blocks = length of leaves
-	uint nblocks;
+	ulong nblocks;
+	// block size, default is 256KB
+	ulong bsize = 256*1024;
 	Node[] leaves;
 	ulong filesize;
 
@@ -33,6 +36,38 @@ class MerkleTree {
 			return false;
 		}
 	}
+
+	// rebuild the leaves
+	// check if they correspond to the stored ones
+	// if not, update the block(s) that differ and verify
+	void update_tree () {
+		Node[] oldLeaves = leaves;
+		leaves = [];
+		_build_leaves();
+
+		for (int i=0; i<nblocks; i++) {
+			auto node = cast (LeafNode) leaves[i];
+			node.computeHash!SHA256();
+
+			if (i < oldLeaves.length) {
+				// if exist a corresponding old leaf
+				// check if the hashes match
+				if (node.hash != oldLeaves[i].hash) {
+					// if the hashes don't match
+					// the node needs to be updated
+					// the tree must be verified again
+					_update_node(node, oldLeaves[i]);
+					writeln ("updated a node");
+				}
+			} else {
+				// if the old leaf does not exist
+				// means we have one or more block
+				writeln ("new block to be added!");
+
+			}
+		}
+	}
+
 	// for debugging purposes, print all the nodes' hashes
 	void print_tree (Node n) {
 		writeln ("Node: "~ cast(string) n.hash);
@@ -43,43 +78,68 @@ class MerkleTree {
 	}
 
 // helper functions
+	private void _update_node (Node newNode, Node oldNode) {
+		// substitute the new node to the old one in the tree
+		// then update the hashes
+		auto parent = oldNode.parent;
+
+		if (oldNode == parent.right) {
+			parent.right = newNode;
+		} else {
+			parent.left = newNode;
+		}
+		newNode.parent = parent;
+
+		// update hashes
+		_recompute (newNode);
+	}
+
+	private void _recompute (Node n) {
+		// compute the hash of the node
+		if (n.leaf) {
+			auto node = cast (LeafNode) n;
+			node.computeHash!SHA256();
+		} else {
+			auto node = cast (InternalNode) n;
+			node.computeHash!SHA256(node.left.hash, node.right.hash);
+		}
+
+		if (!n.root) {
+			// recursively compute the parents
+			// until the root is found, then exit
+			_recompute(n.parent);
+		}
+	}
+
 	private void _build_tree () {
 		_build_leaves();
 		_connect_tree(leaves);
 	}
-	// TODO
-	private uint _round_nblocks (ulong size) {
-		size = size/1024; // we need KB
-		uint res = cast(uint) size;
-		writeln(res);
-		return res; 
+
+	// round the number of blocks to the next power of 2
+	// then adapt the blocksize to match the number of blocks
+	private void _round_nblocks (ulong sz) {
+		real size = cast (real) sz;
+		real nb = size / (256*1024);
+
+		auto nbReal = nextPow2 (nb);
+		bsize = cast (ulong) ceil (size / nbReal);
+		nblocks = cast (ulong) nbReal;
 	}
 
 	private void _build_leaves () {
 		// open the file for reading
+		// adapt the block size so that the number of blocks is a power of 2
 		auto f = File (_dirname, "r");
 		filesize = f.size;
-		nblocks = _round_nblocks(filesize);
-
-		// read the file in chunks of 256 KB
+		_round_nblocks(filesize);
+		// read the file in chunks of [bsize]
 		// append the buffer read to the array of leaves
 		int id = 0;
-		foreach (ubyte[] buf; f.byChunk(256*1024)) {
+		foreach (ubyte[] buf; f.byChunk(bsize)) {
 			leaves ~= new LeafNode(id++, buf);
-			nblocks++;
 		}
-
-		// if the number of blocks is odd
-		// duplicate last node
-		// mark the duplicate as such
-		if (nblocks % 2 != 0) {
-			leaves ~= leaves[$-1];
-			nblocks++;
-			leaves[$-1].duplicate = true;
-		}
-
 		writeln (leaves.length);
-
 	}
 
 	// build the actual tree connecting leaves and internals
@@ -112,11 +172,6 @@ class MerkleTree {
 			higherNodes ~= parent;
 		}
 
-		if (higherNodes.length % 2 != 0 && higherNodes.length != 1) { 
-			higherNodes ~= higherNodes[$-1];
-			higherNodes[$-1].duplicate = true;
-		}
-
 
 		writeln (higherNodes.length);
 		_connect_tree(higherNodes);
@@ -146,10 +201,17 @@ class MerkleTree {
 }
 
 void main() {
+	import core.thread;
+	import core.time;
 	MerkleTree mkt = new MerkleTree ("/home/francesco/test");
-	while (true) {
-		writeln(mkt.verify_tree());
+	writeln(mkt.verify_tree());
+	int i = 0;
+	auto val = dur!"seconds"(1);
+	while (i < 20) {
+		writeln (i++);
+		Thread.sleep (val);
 	}
+	mkt.update_tree();
 	//mkt.print_tree(mkt.root);
 }
 

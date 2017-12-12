@@ -14,6 +14,12 @@ class Node {
 	private bool _root;
 	private bool _duplicate;
 
+// abstract == overriding forced
+// verify the node's subtree hash, return it
+	abstract string verify () {
+		return "";
+	}
+
 // properties
 	@property inout(Node) left() inout {
 		return _left;
@@ -75,18 +81,12 @@ class Node {
 	@property bool root (bool v) {
 		return _root = v;
 	}
-
-// abstract == overriding forced
-// verify the node's subtree hash, return it
-	abstract string verify () {
-		return "";
-	}
 }
 
 class LeafNode : Node {
 	// the block id (unique)
 	uint blockId;
-	private ubyte[] data;	
+	private ubyte[] data;
 
 	this (uint bId, ubyte[] d) {
 		leaf = true;
@@ -101,8 +101,8 @@ class LeafNode : Node {
 	}
 
 	override string verify () {
+		// this node is a leaf, thus return the computed hash
 		auto h = computeHash!SHA256();
-		//writeln("Leaf "~h);
 		return h;
  	}
 }
@@ -129,14 +129,13 @@ class InternalNode : Node {
 		// concatenate the two childrens' hashes into a string
 		string data = lhash ~ rhash;
 		// hash the string
-		hash = produceHash!Hash(data, false);
+		hash = produceHash!Hash(data, leaf);
 		return hash;
 	}
 
 	override string verify () {
 		// the node is not a leaf, recur on the subnodes
 		auto h = computeHash!SHA256(left.verify(), right.verify());
-		//writeln("Internal: "~h);
 		return h;
 	}
 }

@@ -45,6 +45,12 @@ class MerkleTree {
 		leaves = [];
 		_build_leaves();
 
+		// TODO fix workaround
+		if (nblocks > oldLeaves.length) {
+			_connect_tree(leaves);
+			return;
+		}
+
 		for (int i=0; i<nblocks; i++) {
 			auto node = cast (LeafNode) leaves[i];
 			node.computeHash!SHA256();
@@ -59,11 +65,6 @@ class MerkleTree {
 					_update_node(node, oldLeaves[i]);
 					writeln ("updated a node");
 				}
-			} else {
-				// if the old leaf does not exist
-				// means we have one or more block
-				writeln ("new block to be added!");
-
 			}
 		}
 	}

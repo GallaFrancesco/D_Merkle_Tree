@@ -8,7 +8,7 @@ There's a lot of documentation regarding merkle trees online, starting from [wik
 
 ## Status of development
 
-This is a work in progress, the library is currently able to load a file, verify the tree and update it, even though **insertion of additional blocks has yet to be implemented**.
+This is a work in progress, the library is currently able to load a file, verify the tree and update it.
 
 ### Current capabilities
 
@@ -18,6 +18,6 @@ This is a work in progress, the library is currently able to load a file, verify
 
 ### To be implemented
 
-* insertion of new nodes during tree update
+* insertion of new nodes during tree update, in a lightweight fashion
 * configuration options - digest function selection
 * asynchronous computation of hashes, to speed up tree verification

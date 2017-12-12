@@ -42,8 +42,7 @@ class MerkleTree {
 	// if not, update the block(s) that differ and verify
 	void update_tree () {
 		Node[] oldLeaves = leaves;
-		leaves = [];
-		_build_leaves();
+		leaves = _build_leaves(_dirname);
 
 		// TODO fix workaround
 		if (nblocks > oldLeaves.length) {
@@ -62,11 +61,34 @@ class MerkleTree {
 					// if the hashes don't match
 					// the node needs to be updated
 					// the tree must be verified again
-					_update_node(node, oldLeaves[i]);
+					_update_block(node, oldLeaves[i]);
 					writeln ("updated a node");
 				}
 			}
 		}
+	}
+
+	bool verify_file (string dir, string mroot) {
+		Node[] l = _build_leaves(dir);
+
+		if (mroot == merkleroot) {
+			return true;
+		}
+
+		if (l.length != nblocks) {
+			return false;
+		}
+
+		for (int i=0; i<nblocks; i++) {
+			auto node = cast (LeafNode) l[i];
+			node.computeHash!SHA256();
+
+			if (node.hash != leaves[i].hash) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	// for debugging purposes, print all the nodes' hashes
@@ -79,7 +101,7 @@ class MerkleTree {
 	}
 
 // helper functions
-	private void _update_node (Node newNode, Node oldNode) {
+	private void _update_block (Node newNode, Node oldNode) {
 		// substitute the new node to the old one in the tree
 		// then update the hashes
 		auto parent = oldNode.parent;
@@ -113,7 +135,7 @@ class MerkleTree {
 	}
 
 	private void _build_tree () {
-		_build_leaves();
+		leaves = _build_leaves(_dirname);
 		_connect_tree(leaves);
 	}
 
@@ -128,19 +150,21 @@ class MerkleTree {
 		nblocks = cast (ulong) nbReal;
 	}
 
-	private void _build_leaves () {
+	private Node[] _build_leaves (string filename) {
 		// open the file for reading
 		// adapt the block size so that the number of blocks is a power of 2
-		auto f = File (_dirname, "r");
+		Node [] leav;
+		auto f = File (filename, "r");
 		filesize = f.size;
 		_round_nblocks(filesize);
 		// read the file in chunks of [bsize]
-		// append the buffer read to the array of leaves
+		// append the buffer read to the array of leav
 		int id = 0;
 		foreach (ubyte[] buf; f.byChunk(bsize)) {
-			leaves ~= new LeafNode(id++, buf);
+			leav ~= new LeafNode(id++, buf);
 		}
-		writeln (leaves.length);
+		writeln (leav.length);
+		return leav;
 	}
 
 	// build the actual tree connecting leaves and internals
@@ -204,15 +228,13 @@ class MerkleTree {
 void main() {
 	import core.thread;
 	import core.time;
-	MerkleTree mkt = new MerkleTree ("/home/francesco/test");
-	writeln(mkt.verify_tree());
-	int i = 0;
-	auto val = dur!"seconds"(1);
-	while (i < 20) {
-		writeln (i++);
-		Thread.sleep (val);
-	}
-	mkt.update_tree();
-	//mkt.print_tree(mkt.root);
+	auto mkt = new MerkleTree ("/home/francesco/test");
+	mkt.verify_tree();
+	// check for changes in the file
+	//mkt.update_tree();
+	// check if a provided file is equal to the one stored
+	auto mkt2 = new MerkleTree("/home/francesco/test2");
+	mkt2.verify_tree();
+	writeln(mkt.verify_file("/home/francesco/test2", mkt2.merkleroot));
 }
 

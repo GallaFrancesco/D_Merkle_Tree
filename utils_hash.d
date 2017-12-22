@@ -30,3 +30,6 @@ unittest {
     assert (hashesEqual(produceHash!SHA256("1111", true),"49E4B556E9E634D63266F6DDBD6BF18053882BD71BA20F09D8DD8A0DC2D4B67D")) ;
     assert (hashesEqual(produceHash!SHA256("1111", false),"F7FFF793C8AD73BB2F1BF70C3EB5745F8587312CCEDE17F0AF33AF0361D06913")) ;
 }
+
+/*** Testing Purpose (uncomment)***/
+//void main () {}

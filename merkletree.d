@@ -225,10 +225,11 @@ class MerkleTree {
 	}
 }
 
-void main() {
+unittest {
+
 	import core.thread;
 	import core.time;
-	auto mkt = new MerkleTree ("/home/francesco/test");
+	auto mkt = new MerkleTree ("./test/test_1");
 	mkt.verify_tree();
 	// check for changes in the file
 	//mkt.update_tree();
@@ -238,3 +239,5 @@ void main() {
 	writeln(mkt.verify_file("/home/francesco/test2", mkt2.merkleroot));
 }
 
+/*** Testing Purpose (uncomment)***/
+//void main () {}

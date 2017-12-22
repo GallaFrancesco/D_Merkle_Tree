@@ -140,59 +140,27 @@ class InternalNode : Node {
 	}
 }
 
-
 unittest {
-	// leaf class
-	import std.random;
-	import std.stdio;
-	import std.digest.sha;
+	ubyte[] input = [];
+	auto l = new LeafNode(0, input);
+	auto theHash = produceHash!SHA256(to!string(input), l.leaf); 
 
-	char[1024] data;
-	// randomly generate a data block
-	for (uint i=0; i<1024; i++) {
-		data[i] = cast(char) uniform (65, 91);
-	}
-	writeln("[TEST] data: " ~ data);
-
-	// create a new LeafNode object with the data block
-	// index is 0
-	LeafNode l = new LeafNode (0);
-	// compute its hash (TEST with SHA256)
-	l.computeHash!SHA256(data);
-	writeln("[TEST] " ~ l.hash());
-
-	// different data block
-	char[1024] ndata;
-	for (uint i=0; i<1024; i++) {
-		ndata[i] = cast(char) uniform (65, 91);
-	}
-
-	// test the new data against the old one
-	writeln("[TEST] ndata: " ~ ndata);
-	assert(!l.checkHash!SHA256(ndata));
+	assert (theHash == l.computeHash!SHA256());
 }
 
 unittest {
-	import std.stdio;
-	import std.digest.sha;
-	import std.random;
-	// internal class
-	char[1024] dataL, dataR;
-	// randomly generate a data block
-	for (uint i=0; i<1024; i++) {
-		dataL[i] = cast(char) uniform (65, 91);
-		dataR[1023-i] = cast(char) uniform (65, 91);
-	}
+	ubyte[] input = [];
+	auto l = new LeafNode(0, input);
+	auto r = new LeafNode(1, input);
 
-	// create a new LeafNode object with the data block
-	// index is 0
-	LeafNode l = new LeafNode (0, dataL);
-	LeafNode r = new LeafNode (0, dataR);
+	auto internal = new InternalNode (l,r);
 
-	InternalNode i = new InternalNode();
-	i.left(l);
-	i.right(r);
-	i.computeHash!SHA256();
-	writeln ("[TEST] internal: " ~ i.hash);
+	LeafNode intL = cast(LeafNode) internal.left;
+	LeafNode intR = cast(LeafNode) internal.right;
+
+	assert (intL.blockId == l.blockId);
+	assert (intR.blockId == r.blockId);
 }
 
+/*** Testing Purpose (uncomment)***/
+//void main () {}

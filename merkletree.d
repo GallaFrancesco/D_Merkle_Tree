@@ -160,10 +160,10 @@ class MerkleTree {
 		// read the file in chunks of [bsize]
 		// append the buffer read to the array of leav
 		int id = 0;
-		foreach (ubyte[] buf; f.byChunk(bsize)) {
+		foreach (ubyte[] buf; f.byChunk(cast(int) bsize)) {
 			leav ~= new LeafNode(id++, buf);
 		}
-		writeln (leav.length);
+		//writeln (leav.length);
 		return leav;
 	}
 
@@ -227,17 +227,15 @@ class MerkleTree {
 
 unittest {
 
-	import core.thread;
-	import core.time;
-	auto mkt = new MerkleTree ("./test/test_1");
+	auto mkt = new MerkleTree ("./test/test1");
 	mkt.verify_tree();
 	// check for changes in the file
-	//mkt.update_tree();
+	mkt.update_tree();
 	// check if a provided file is equal to the one stored
-	auto mkt2 = new MerkleTree("/home/francesco/test2");
-	mkt2.verify_tree();
-	writeln(mkt.verify_file("/home/francesco/test2", mkt2.merkleroot));
+	auto mkt2 = new MerkleTree("./test/test2");
+	assert(mkt2.verify_tree());
+	assert(mkt.verify_file("./test/test2", mkt2.merkleroot));
 }
 
-/*** Testing Purpose (uncomment)***/
-//void main () {}
+//** Testing Purpose (uncomment)**
+void main () {}

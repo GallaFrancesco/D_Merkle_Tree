@@ -3,6 +3,7 @@ import std.stdio;
 import std.conv;
 import utils_hash;
 import std.digest.sha;
+import std.digest.crc;
 
 class Node {
 
@@ -162,5 +163,5 @@ unittest {
 	assert (intR.blockId == r.blockId);
 }
 
-/*** Testing Purpose (uncomment)***/
+//** Testing Purpose (uncomment)**
 //void main () {}
